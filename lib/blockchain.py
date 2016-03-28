@@ -36,7 +36,8 @@ class Blockchain(util.PrintError):
     def __init__(self, config, network):
         self.config = config
         self.network = network
-        self.headers_url = "https://headers.electrum.org/blockchain_headers"
+        # No electrum-frc URL
+        self.headers_url = ''#'http://headers.electrum.org/blockchain_headers'
         self.local_height = 0
         self.set_local_height()
 
@@ -61,7 +62,7 @@ class Blockchain(util.PrintError):
         for header in chain:
             height = header.get('block_height')
             bits, target = self.get_target(height / 2016, chain)
-            self.verify_header(header, prev_header, bits, target)
+            #self.verify_header(header, prev_header, bits, target) #deactivate diff check
             prev_header = header
 
     def verify_chunk(self, index, data):
