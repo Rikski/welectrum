@@ -38,7 +38,7 @@ from unicodedata import normalize
 from collections import namedtuple
 
 from i18n import _
-from util import NotEnoughFunds, PrintError, profiler
+from util import NotEnoughFunds, PrintError, profiler, apply_demurrage
 
 from bitcoin import *
 from account import *
@@ -618,13 +618,16 @@ class Abstract_Wallet(PrintError):
         return sum([v for height, v, is_cb in received.values()])
 
     # return the balance of a bitcoin address: confirmed and matured, unconfirmed, unmatured
-    def get_addr_balance(self, address):
+    def get_addr_balance(self, address, height=None):
         received, sent = self.get_addr_io(address)
         c = u = x = 0
         for txo, (tx_height, v, is_cb) in received.items():
             if is_cb and tx_height + COINBASE_MATURITY > self.get_local_height():
                 x += v
             elif tx_height > 0:
+                if height is None:
+                    height = tx_height
+                v = apply_demurrage(v, tx_height, height)
                 c += v
             else:
                 u += v
@@ -636,7 +639,7 @@ class Abstract_Wallet(PrintError):
         return c, u, x
 
 
-    def get_spendable_coins(self, domain = None, exclude_frozen = True):
+    def get_spendable_coins(self, domain = None, exclude_frozen = True, height = None):
         coins = []
         if domain is None:
             domain = self.addresses(True)
@@ -649,9 +652,13 @@ class Abstract_Wallet(PrintError):
                 if is_cb and tx_height + COINBASE_MATURITY > self.get_local_height():
                     continue
                 prevout_hash, prevout_n = txo.split(':')
+                if height is not None:
+                        adjusted_value = apply_demurrage(value, tx_height, height)
+                    else:
+                        adjusted_value = value
                 output = {
                     'address':addr,
-                    'value':value,
+                    'value':adjusted_value,
                     'prevout_n':int(prevout_n),
                     'prevout_hash':prevout_hash,
                     'height':tx_height,
@@ -694,18 +701,18 @@ class Abstract_Wallet(PrintError):
                 return acc_id
         return None
 
-    def get_account_balance(self, account):
-        return self.get_balance(self.get_account_addresses(account))
+    def get_account_balance(self, account, height=None):
+        return self.get_balance(self.get_account_addresses(account), height)
 
-    def get_frozen_balance(self):
-        return self.get_balance(self.frozen_addresses)
+    def get_frozen_balance(self, height=None):
+        return self.get_balance(self.frozen_addresses, height)
 
-    def get_balance(self, domain=None):
+    def get_balance(self, domain=None, height=None):
         if domain is None:
             domain = self.addresses(True)
         cc = uu = xx = 0
         for addr in domain:
-            c, u, x = self.get_addr_balance(addr)
+            c, u, x = self.get_addr_balance(addr, height)
             cc += c
             uu += u
             xx += x
@@ -968,6 +975,8 @@ class Abstract_Wallet(PrintError):
         coin_chooser = coinchooser.get_coin_chooser(config)
         tx = coin_chooser.make_tx(coins, outputs, change_addrs[:max_change],
                                   fee_estimator, dust_threshold)
+                                  
+        tx.refheigt = self.network.get_local_height()
 
         # Sort the inputs and outputs deterministically
         tx.BIP_LI01_sort()
