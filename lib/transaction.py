@@ -464,6 +464,7 @@ def deserialize(raw):
     n_vout = vds.read_compact_size()
     d['outputs'] = list(parse_output(vds,i) for i in xrange(n_vout))
     d['lockTime'] = vds.read_uint32()
+    d['refheight'] = vds.read_int32()
     return d
 
 
@@ -544,14 +545,16 @@ class Transaction:
         self._inputs = d['inputs']
         self._outputs = [(x['type'], x['address'], x['value']) for x in d['outputs']]
         self.locktime = d['lockTime']
+        self.refheight = d['refheight']
         return d
 
     @classmethod
-    def from_io(klass, inputs, outputs, locktime=0):
+    def from_io(klass, inputs, outputs, locktime=0, refheight=0):
         self = klass(None)
         self._inputs = inputs
         self._outputs = outputs
         self.locktime = locktime
+        self.refheight = refheight
         return self
 
     @classmethod
@@ -681,8 +684,8 @@ class Transaction:
 
     def serialize(self, for_sig=None):
         inputs = self.inputs()
-        outputs = self.outputs()
-        s  = int_to_hex(1,4)                                         # version
+        outputs = self.outputs()refheight = self.refheight
+        s  = int_to_hex(2,4)                                         # version
         s += var_int( len(inputs) )                                  # number of inputs
         for i, txin in enumerate(inputs):
             s += self.serialize_input(txin, i, for_sig)
@@ -694,6 +697,7 @@ class Transaction:
             s += var_int( len(script)/2 )                           #  script length
             s += script                                             #  script
         s += int_to_hex(0,4)                                        #  lock time
+        s += int_to_hex(refheight,4)                                #  refheight
         if for_sig is not None and for_sig != -1:
             s += int_to_hex(1, 4)                                   #  hash type
         return s
