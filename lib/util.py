@@ -58,6 +58,12 @@ class MyEncoder(json.JSONEncoder):
         if isinstance(obj, Transaction):
             return obj.as_dict()
         return super(MyEncoder, self).default(obj)
+        
+def apply_demurrage(value, received_height, current_height):
+    '''Applies demurrage to a deposit value'''
+    discount_rate = (1 - 2**-20) ** (current_height - received_height)
+    new_value = int(value * discount_rate)
+    return new_value
 
 class PrintError(object):
     '''A handy base class'''
