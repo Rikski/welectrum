@@ -61,7 +61,7 @@ class MyEncoder(json.JSONEncoder):
         
 def apply_demurrage(value, received_height, current_height):
     '''Applies demurrage to a deposit value'''
-    discount_rate = (1 - 2**-20) ** (current_height - received_height)
+    discount_rate = (0.999996185) ** (current_height - received_height)
     new_value = int(value * discount_rate)
     return new_value
 
