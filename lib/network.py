@@ -46,7 +46,7 @@ DEFAULT_PORTS = {'t':'50001', 's':'50002', 'h':'8081', 'g':'8082'}
 
 # Currently no Electrum-FRC servers
 DEFAULT_SERVERS = {
-    'localhost':DEFAULT_PORTS,
+    'welectrum.winc-ev.com':DEFAULT_PORTS,
 }
 
 NODES_RETRY_INTERVAL = 60
